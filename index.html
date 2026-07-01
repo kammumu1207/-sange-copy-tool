@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>三哥文案生成器</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #FAF8F5;
+      --surface: #FFFFFF;
+      --surface2: #F3F0EB;
+      --border: #E5E0D8;
+      --border-strong: #CEC8BE;
+      --text: #1A1714;
+      --text-sec: #6B6560;
+      --text-muted: #9B948C;
+      --accent: #D4600A;
+      --accent-light: #FDF0E8;
+      --accent-dark: #B35008;
+      --success: #1D9E75;
+      --success-bg: #EAF7F2;
+      --danger: #C0392B;
+      --danger-bg: #FDF0EF;
+      --radius: 10px;
+      --shadow: 0 1px 4px rgba(0,0,0,0.07), 0 4px 16px rgba(0,0,0,0.05);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+      min-height: 100vh;
+    }
+
+    .header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .header-logo {
+      width: 36px;
+      height: 36px;
+      background: var(--accent);
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+    .header-title { font-size: 16px; font-weight: 600; }
+    .header-sub { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+
+    .container { max-width: 680px; margin: 0 auto; padding: 24px 16px 60px; }
+
+    /* Card */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin-bottom: 14px; box-shadow: var(--shadow); }
+    .card-title { font-size: 13px; font-weight: 600; color: var(--text-sec); margin-bottom: 14px; display: flex; align-items: center; gap: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .card-title::before { content: ''; display: inline-block; width: 3px; height: 14px; background: var(--accent); border-radius: 2px; }
+
+    /* Upload */
+    .upload-zone { border: 2px dashed var(--border-strong); border-radius: var(--radius); padding: 28px 16px; text-align: center; cursor: pointer; transition: all 0.2s; background: var(--surface2); }
+    .upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: var(--accent-light); }
+    .upload-zone input { display: none; }
+    .upload-icon { font-size: 32px; margin-bottom: 8px; }
+    .upload-text { font-size: 14px; color: var(--text-sec); line-height: 1.5; }
+    .upload-text strong { color: var(--accent); }
+    .upload-hint { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+    .preview-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 14px; }
+    .preview-item { position: relative; aspect-ratio: 1; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+    .preview-item img { width: 100%; height: 100%; object-fit: cover; }
+    .preview-del { position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; border-radius: 50%; background: rgba(0,0,0,0.6); color: white; border: none; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .preview-del:hover { background: var(--danger); }
+    .preview-info { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
+
+    /* Toggle */
+    .toggle-row { display: flex; align-items: center; gap: 12px; }
+    .toggle-info { flex: 1; }
+    .toggle-info h4 { font-size: 14px; font-weight: 500; }
+    .toggle-info p { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .toggle-badge { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+    .toggle-badge.share { background: var(--surface2); color: var(--text-muted); }
+    .toggle-badge.commerce { background: var(--accent-light); color: var(--accent); }
+    .switch { position: relative; width: 46px; height: 26px; flex-shrink: 0; }
+    .switch input { display: none; }
+    .switch-track { position: absolute; inset: 0; background: var(--border-strong); border-radius: 26px; cursor: pointer; transition: 0.2s; }
+    .switch-track::before { content: ''; position: absolute; width: 20px; height: 20px; left: 3px; top: 3px; background: white; border-radius: 50%; transition: 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+    input:checked ~ .switch-track { background: var(--accent); }
+    input:checked ~ .switch-track::before { transform: translateX(20px); }
+
+    /* Button */
+    .btn-generate { width: 100%; padding: 13px; border-radius: var(--radius); border: none; background: var(--accent); color: white; font-size: 15px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: background 0.2s; letter-spacing: 0.02em; }
+    .btn-generate:hover { background: var(--accent-dark); }
+    .btn-generate:disabled { opacity: 0.5; cursor: not-allowed; }
+    .spinner { width: 18px; height: 18px; border: 2.5px solid rgba(255,255,255,0.4); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; display: none; }
+    .spinner.show { display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Error */
+    .error-box { background: var(--danger-bg); border: 1px solid #F5C6C3; border-radius: var(--radius); padding: 10px 14px; font-size: 13px; color: var(--danger); display: none; margin-bottom: 14px; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 4px; background: var(--surface2); border-radius: var(--radius); padding: 4px; margin-bottom: 14px; }
+    .tab { flex: 1; padding: 8px 4px; border-radius: 7px; border: none; background: transparent; font-size: 12px; color: var(--text-muted); cursor: pointer; text-align: center; transition: all 0.15s; white-space: nowrap; }
+    .tab.active { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .tab.disabled { opacity: 0.4; cursor: not-allowed; }
+    .pane { display: none; }
+    .pane.active { display: block; }
+
+    /* Output */
+    .out-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .out-label { font-size: 13px; font-weight: 600; color: var(--text-sec); display: flex; align-items: center; gap: 6px; }
+    .out-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .dot-pink { background: #D4537E; }
+    .dot-teal { background: #1D9E75; }
+    .dot-purple { background: #7F77DD; }
+    .dot-amber { background: #BA7517; }
+
+    .copy-btn { padding: 5px 12px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--surface2); color: var(--text-sec); font-size: 12px; cursor: pointer; transition: all 0.15s; }
+    .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .copy-btn.done { border-color: var(--success); color: var(--success); background: var(--success-bg); }
+
+    .out-text { font-size: 14px; line-height: 1.8; color: var(--text); white-space: pre-wrap; min-height: 80px; }
+    .out-text.empty { color: var(--text-muted); font-size: 13px; }
+
+    .mode-hint { font-size: 12px; color: var(--text-muted); background: var(--surface2); border-radius: 8px; padding: 8px 12px; margin-bottom: 14px; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo">🛍️</div>
+  <div>
+    <div class="header-title">三哥文案生成器</div>
+    <div class="header-sub">小三美日 × AI 輪播文案工具</div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Upload -->
+  <div class="card">
+    <div class="card-title">上傳輪播圖片</div>
+    <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()" ondragover="onDrag(event,true)" ondragleave="onDrag(event,false)" ondrop="onDrop(event)">
+      <input type="file" id="file-input" accept="image/*" multiple onchange="onFiles(event)">
+      <div class="upload-icon">🖼️</div>
+      <div class="upload-text">點擊或拖曳上傳圖片<br><strong>最多4張，JPG / PNG</strong></div>
+      <div class="upload-hint">圖片會自動壓縮，建議上傳封面＋關鍵金句頁</div>
+    </div>
+    <div class="preview-grid" id="preview-grid"></div>
+    <div class="preview-info" id="preview-info"></div>
+  </div>
+
+  <!-- Mode toggle -->
+  <div class="card">
+    <div class="card-title">發文模式</div>
+    <div class="toggle-row">
+      <div class="toggle-info">
+        <h4>導購模式</h4>
+        <p>關閉：只出 IG 貼文＋限時動態（純分享）<br>開啟：4格全出，含留言機器人＋私訊轉化</p>
+      </div>
+      <span class="toggle-badge share" id="mode-badge">純分享</span>
+      <label class="switch">
+        <input type="checkbox" id="commerce-toggle" onchange="onToggle()">
+        <span class="switch-track"></span>
+      </label>
+    </div>
+  </div>
+
+  <!-- Generate -->
+  <button class="btn-generate" id="gen-btn" onclick="generate()">
+    <div class="spinner" id="spinner"></div>
+    <span id="btn-label">✨ AI 讀圖生成文案</span>
+  </button>
+  <div class="error-box" id="error-box"></div>
+
+  <!-- Output -->
+  <div id="mode-hint" class="mode-hint">📌 純分享模式：只生成 IG 貼文與限時動態</div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('post')">📱 貼文</button>
+    <button class="tab" onclick="switchTab('story')">📸 限動</button>
+    <button class="tab disabled" id="tab-comment" onclick="switchTab('comment')">💬 留言</button>
+    <button class="tab disabled" id="tab-dm" onclick="switchTab('dm')">🤖 私訊</button>
+  </div>
+
+  <div class="card pane active" id="pane-post">
+    <div class="out-header">
+      <div class="out-label"><span class="out-dot dot-pink"></span>IG 貼文</div>
+      <button class="copy-btn" onclick="copyOut('out-post', this)">複製</button>
+    </div>
+    <div class="out-text empty" id="out-post">上傳圖片後點「AI 讀圖生成文案」</div>
+  </div>
+
+  <div class="card pane" id="pane-story">
+    <div class="out-header">
+      <div class="out-label"><span class="out-dot dot-teal"></span>限時動態</div>
+      <button class="copy-btn" onclick="copyOut('out-story', this)">複製</button>
+    </div>
+    <div class="out-text empty" id="out-story">上傳圖片後點「AI 讀圖生成文案」</div>
+  </div>
+
+  <div class="card pane" id="pane-comment">
+    <div class="out-header">
+      <div class="out-label"><span class="out-dot dot-purple"></span>留言機器人回覆（3選項）</div>
+      <button class="copy-btn" onclick="copyOut('out-comment', this)">複製</button>
+    </div>
+    <div class="out-text empty" id="out-comment">開啟導購模式後生成</div>
+  </div>
+
+  <div class="card pane" id="pane-dm">
+    <div class="out-header">
+      <div class="out-label"><span class="out-dot dot-amber"></span>私訊轉化訊息</div>
+      <button class="copy-btn" onclick="copyOut('out-dm', this)">複製</button>
+    </div>
+    <div class="out-text empty" id="out-dm">開啟導購模式後生成</div>
+  </div>
+
+</div>
+
+<script>
+let images = []; // { data: base64string, type: mime }
+
+function onDrag(e, on) {
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.toggle('drag', on);
+}
+function onDrop(e) {
+  e.preventDefault();
+  onDrag(e, false);
+  handleFiles(e.dataTransfer.files);
+}
+function onFiles(e) {
+  handleFiles(e.target.files);
+  e.target.value = '';
+}
+
+function handleFiles(files) {
+  const remaining = 4 - images.length;
+  const toProcess = Array.from(files).slice(0, remaining);
+  if (files.length > remaining) showError(`最多4張，已略過多餘的圖片`);
+  toProcess.forEach(f => compressAndAdd(f));
+}
+
+function compressAndAdd(file) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 768;
+      let w = img.width, h = img.height;
+      if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const b64 = canvas.toDataURL('image/jpeg', 0.65);
+      images.push({ data: b64.split(',')[1], type: 'image/jpeg', preview: b64 });
+      renderPreviews();
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeImg(i) {
+  images.splice(i, 1);
+  renderPreviews();
+  showError('');
+}
+
+function renderPreviews() {
+  const grid = document.getElementById('preview-grid');
+  grid.innerHTML = images.map((img, i) => `
+    <div class="preview-item">
+      <img src="${img.preview}">
+      <button class="preview-del" onclick="removeImg(${i})">✕</button>
+    </div>
+  `).join('');
+  document.getElementById('preview-info').textContent = images.length ? `已上傳 ${images.length} / 4 張` : '';
+}
+
+function onToggle() {
+  const on = document.getElementById('commerce-toggle').checked;
+  document.getElementById('mode-badge').textContent = on ? '導購' : '純分享';
+  document.getElementById('mode-badge').className = 'toggle-badge ' + (on ? 'commerce' : 'share');
+  document.getElementById('tab-comment').classList.toggle('disabled', !on);
+  document.getElementById('tab-dm').classList.toggle('disabled', !on);
+  document.getElementById('mode-hint').style.display = on ? 'none' : 'block';
+}
+
+function switchTab(name) {
+  const isCommerce = document.getElementById('commerce-toggle').checked;
+  if ((name === 'comment' || name === 'dm') && !isCommerce) return;
+  document.querySelectorAll('.tab').forEach((el, i) => {
+    el.classList.toggle('active', ['post','story','comment','dm'][i] === name);
+  });
+  document.querySelectorAll('.pane').forEach(el => el.classList.remove('active'));
+  document.getElementById('pane-' + name).classList.add('active');
+}
+
+function setLoading(on) {
+  document.getElementById('gen-btn').disabled = on;
+  document.getElementById('spinner').classList.toggle('show', on);
+  document.getElementById('btn-label').textContent = on ? 'AI 讀圖中...' : '✨ AI 讀圖生成文案';
+}
+
+function showError(msg) {
+  const el = document.getElementById('error-box');
+  el.textContent = msg;
+  el.style.display = msg ? 'block' : 'none';
+}
+
+async function generate() {
+  if (images.length === 0) { showError('請先上傳圖片！'); return; }
+  showError('');
+  setLoading(true);
+
+  try {
+    const res = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        images: images.map(({ data, type }) => ({ data, type })),
+        isCommerce: document.getElementById('commerce-toggle').checked
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || '生成失敗');
+
+    ['post','story','comment','dm'].forEach(key => {
+      const el = document.getElementById('out-' + key);
+      if (data[key]) {
+        el.classList.remove('empty');
+        el.textContent = data[key];
+      } else {
+        el.classList.add('empty');
+        el.textContent = (key === 'comment' || key === 'dm') ? '開啟導購模式後生成' : '（未生成）';
+      }
+    });
+    switchTab('post');
+  } catch(e) {
+    showError('錯誤：' + e.message);
+  } finally {
+    setLoading(false);
+  }
+}
+
+function copyOut(id, btn) {
+  const el = document.getElementById(id);
+  if (el.classList.contains('empty')) return;
+  navigator.clipboard.writeText(el.textContent).then(() => {
+    btn.classList.add('done');
+    btn.textContent = '✓ 已複製';
+    setTimeout(() => { btn.classList.remove('done'); btn.textContent = '複製'; }, 2000);
+  });
+}
+</script>
+</body>
+</html>
